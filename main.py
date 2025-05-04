@@ -2,14 +2,16 @@ import cv2
 import numpy as np
 from src.inference import GestureClassifier
 from src.feedback import FeedbackHandler
-from src.ui import UIComponents
+from src.ui_components import UIComponents
 from src.preprocess import preprocess_frame
 from game import GameEngine
+from src.capture_page import CapturePage
 
 classifier = GestureClassifier()
 feedback = FeedbackHandler()
 ui = UIComponents(classifier.categories)
 game = GameEngine(mode='local')
+capture_page = CapturePage(classifier.categories)
 
 cap = cv2.VideoCapture(0)
 cv2.namedWindow("Gesture App", cv2.WINDOW_NORMAL)
@@ -29,9 +31,10 @@ def draw_controls_overlay(frame):
     lines = [
         "[SPACE] Capture Gesture    [F] Feedback Mode    [ESC] Exit",
         "[A] Add to Dataset         [R] Retrain via Capture",
-        "[W/S] Select Gesture       [Y/N] Confirm Retrain"
+        "[W/S] Select Gesture       [Y/N] Confirm Retrain",
+        "[C] Open Capture Page"
     ]
-    y_start = frame.shape[0] - 70
+    y_start = frame.shape[0] - 90
     for i, line in enumerate(lines):
         cv2.putText(frame, line, (10, y_start + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
     return frame
@@ -57,7 +60,7 @@ while True:
         outcome, rule = game.decide_winner(user_gesture, opponent_gesture)
         last_game_result = (user_gesture, opponent_gesture, rule)
         last_outcome = outcome
-        last_outcome_timer = 100  # display for 100 frames
+        last_outcome_timer = 100
 
     if key == ord('f') and prediction_result:
         show_feedback_ui = True
@@ -77,6 +80,10 @@ while True:
             feedback.launch_capture_mode(ui.get_selected_category())
             show_feedback_ui = False
             prediction_result = []
+
+    if key == ord('c'):
+        capture_page.run()
+        continue
 
     if retrain_prompt:
         cv2.putText(original, "Retrain now? [Y/N]", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
@@ -117,7 +124,6 @@ while True:
 
     display = draw_controls_overlay(display)
 
-    # Combine camera + processed preview
     h1, w1, _ = display.shape
     h2, w2, _ = processed_preview.shape
     if h1 != h2:
